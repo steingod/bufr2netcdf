@@ -45,7 +45,7 @@ def parse_arguments():
     parser.add_argument("-i", "--init", dest="initialize",
             help="Download all data", required=False, action="store_true")
     parser.add_argument("-u", "--update", dest="update",
-            help="Adds the latest bufr-data to the netcdf-file", required=False, action="store_true")
+            help="Adds the latest bufr-data to the netcdf-file NOT NEEDED", required=False, action="store_true")
     parser.add_argument("-a", "--all", dest="all_stations",
             help="To download/upload data from all stations", required=False, action="store_true")
     parser.add_argument("-st", "--station", nargs='*', default=[], dest="spec_station",
@@ -129,13 +129,14 @@ def get_files_specified_dates(desired_path):
     return sorted_files[startpoint_index:endpoint_index]
 
 def get_files_initialize(desired_path):
-    
-    # gets a list of the files that we wish to look at
+    """
+    gets a list of the BUFR files that we wish to look at
+    """
 
     files = []
     for file in os.listdir(desired_path):
         if file.endswith('.bufr'):
-          # Create the filepath of particular file
+            # Create the filepath of particular file
             file_path = ('{}/{}'.format(desired_path,file))
             files.append(file_path)
     return files
@@ -143,8 +144,11 @@ def get_files_initialize(desired_path):
 
 
 def bufr_2_json(file):
-    
-    #open bufr file, convert to json (using "-j s") and load it with json.loads
+    """
+    open bufr file, convert to json (using "-j s") and load it with json.loads
+
+    FIXME it may look like this is done too often and rather should be done in a more efficient manner... e.g. dumping to file and rereading those files if necessary. then it could be done in multi-processing as well.
+    """
 
     # TODO add some error checking...
     ##json_file = json.loads(subprocess.check_output("bufr_dump -j f -f {}".format(file), shell=True, stderr=subprocess.STDOUT))
@@ -223,6 +227,10 @@ def bufr_2_json(file):
     return finale
 
 def return_list_of_stations(get_files):
+    """
+    Get station identifiers from the files available.
+    How identifiers are set up depends on the type of station.
+    """
     cfg = parse_cfg(parse_arguments().cfgfile)
     stationtype = parse_arguments().stationtype
     stations = []
@@ -261,14 +269,17 @@ def return_list_of_stations(get_files):
     return stations
 
 def sorting_hat(get_files, stations = 1):
+    """
+    Sorting BUFR files according to some rules (not sure yet)
+    """
     cfg = parse_cfg(parse_arguments().cfgfile)
     
     if parse_arguments().spec_station:
         stations = parse_arguments().spec_station
     elif not parse_arguments().spec_station:
         stations = return_list_of_stations(get_files)
-    #print(stations)
-    #sys.exit()
+    print(stations)
+    sys.exit()
     stations_dict = {i : [] for i in stations}
     
     for one_file in get_files:
@@ -287,7 +298,10 @@ def sorting_hat(get_files, stations = 1):
                 if str(station[0]['value']) in stations:
                     stations_dict['{}'.format(str(station[0]['value']))].append(station)
     
+    """
+    seems incorrect... commented out
     print('bufr successfully converted to json')
+    """
     print('sorting hat completed')
     
     #print(stations_dict)
@@ -428,7 +442,7 @@ def block_wigos_state(msg):
         var = variable
         if variable[-2] == '.':
             var = variable[:-2]
-        change_upper_case = re.sub('(?<!^)(?=\d{2})', '_',re.sub('(?<!^)(?=[A-Z])', '_', var)).lower()
+        change_upper_case = re.sub(r'(?<!^)(?=\d{2})', '_',re.sub('(?<!^)(?=[A-Z])', '_', var)).lower()
         
         
         
@@ -699,7 +713,7 @@ def shipOrMobileLandStationIdentifier(msg):
         var = variable
         if variable[-2] == '.':
             var = variable[:-2]
-        change_upper_case = re.sub('(?<!^)(?=\d{2})', '_',re.sub('(?<!^)(?=[A-Z])', '_', var)).lower()
+        change_upper_case = re.sub(r'(?<!^)(?=\d{2})', '_',re.sub('(?<!^)(?=[A-Z])', '_', var)).lower()
         
         # checking for standardname
         standardname_check = cf_match(change_upper_case)
@@ -900,12 +914,18 @@ def saving_grace(file, key, destdir):
 
         
 if __name__ == "__main__":
+    """
+    Main method below, used when running the software.
+    """
     parse = parse_arguments()
     cfg = parse_cfg(parse.cfgfile)
     destdir = cfg['output']['destdir']
     frompath = cfg['station_info']['path']
     stationtype = parse.stationtype
     if parse.initialize:
+        """
+        If downloading all data do something
+        """
         sorted_files = sorting_hat(get_files_initialize(frompath))
         #print(sorted_files)
         if parse.stationtype != 'ship':
@@ -921,6 +941,9 @@ if __name__ == "__main__":
         
                
     elif parse.update:
+        """
+        Just updating data extraction
+        """
         print('updating...')
         
         # find the latest date that is stored in the folder
