@@ -279,7 +279,7 @@ def sorting_hat(get_files, stations = 1):
     elif not parse_arguments().spec_station:
         stations = return_list_of_stations(get_files)
     print(stations)
-    sys.exit()
+    #sys.exit()
     stations_dict = {i : [] for i in stations}
     
     for one_file in get_files:
@@ -327,14 +327,22 @@ def block_wigos_state(msg):
         dict_copy = filter_section(copy_dict(i,'key','value','units','code'))
         time_copy = copy_dict(i,'key','time')
         
+        # Create data frame from bufr json dump
         df = pd.DataFrame(dict_copy)
-        
+        #print(df)
      
         #save a table with units for later use
         units_df = df
+        #print(units_df)
         units_df = units_df.drop(columns=['value'])
+        #print(units_df)
+        units_df = rename_duplicated_columns(units_df) # Not sure if needed
+        #print(units_df)
+        """
+        Removed Øystein Godøy, METNO/FOU, 2025-12-21 
         cols = pd.io.parsers.base_parser.ParserBase({'names':units_df['key'], 'usecols':None})._maybe_dedup_names(units_df['key'])
         units_df['key'] = cols # will add a ".1",".2" etc for each double name
+        """
         
         #save a table with height of measurement for later use
         height_df = pd.DataFrame(height_copy)
@@ -342,8 +350,12 @@ def block_wigos_state(msg):
             height_df['height_numb'] = [str(val.get('value')) + ' ' + str(val.get('units')) for val in height_df.height]
             height_df['height_type'] = [str(val.get('key')) for val in height_df.height]
             height_df = height_df.drop(columns=['height'])
+            height_df = rename_duplicated_columns(height_df)
+            """
+            Removed Øystein Godøy, METNO/FOU, 2025-12-21 
             cols = pd.io.parsers.base_parser.ParserBase({'names':height_df['key'], 'usecols':None})._maybe_dedup_names(height_df['key'])
             height_df['key'] = cols # will add a ".1",".2" etc for each double name
+            """
             height_df = height_df.reset_index()
         except:
             height_df = height_df
@@ -353,8 +365,12 @@ def block_wigos_state(msg):
         try:
             time_df['time_duration'] = [str(abs(val.get('value'))) + ' ' + str(val.get('units')) for val in time_df.time]
             time_df = time_df.drop(columns=['time'])
+            time_df = rename_duplicated_columns(time_df)
+            """
+            Removed Øystein Godøy, METNO/FOU, 2025-12-21 
             cols = pd.io.parsers.base_parser.ParserBase({'names':time_df['key'], 'usecols':None})._maybe_dedup_names(time_df['key'])
             time_df['key'] = cols # will add a ".1",".2" etc for each double name
+            """
             time_df = time_df.reset_index()
         except:
             time_df = time_df
@@ -368,8 +384,12 @@ def block_wigos_state(msg):
         df = df.set_index('time')
 
         #some columnnames repeat itself, creating problems when changing to xarray. Fix with:
+        df = rename_duplicated_columns(df)
+        """
+        Removed Øystein Godøy, METNO/FOU, 2025-12-21 
         cols = pd.io.parsers.base_parser.ParserBase({'names':df.columns, 'usecols':None})._maybe_dedup_names(df.columns)
         df.columns = cols # will add a ".1",".2" etc for each double name
+        """
         df = df.drop(columns=['key', 'year', 'month', 'day', 'hour', 'minute'])
         gathered_df.append(df)
         gathered_df_units.append(units_df)
@@ -615,6 +635,7 @@ def shipOrMobileLandStationIdentifier(msg):
         #save a table with units for later use
         units_df = df
         units_df = units_df.drop(columns=['value'])
+        # Check for same as above
         cols = pd.io.parsers.base_parser.ParserBase({'names':units_df['key'], 'usecols':None})._maybe_dedup_names(units_df['key'])
         units_df['key'] = cols # will add a ".1",".2" etc for each double name
 
@@ -911,7 +932,29 @@ def saving_grace(file, key, destdir):
             all_ds_station_period.attrs['history'] = all_ds_station_period.attrs['history'] + ', \n' + '{} converted syno_{}_{}-{} from BUFR to NetCDF-CF'.format(time.strftime('%Y-%m-%d %H:%M:%S'), key, timestring1, timestring2)
         all_ds_station_period.to_netcdf('{}/syno_{}_{}-{}.nc'.format(destdir, key, timestring1, timestring2),
                                             engine='netcdf4', encoding=set_encoding(all_ds_station_period))
+def rename_duplicated_columns(mydf):
+    """
+    The purpose is to rename duplicated column names in a data frame with .1, .2 etc.
+    """
 
+    # Create a list of new, unique column names
+    new_column_names = []
+    counts = {}
+    
+    for col in mydf.columns:
+        if col in counts:
+            # If duplicated, append a counter
+            counts[col] += 1
+            new_column_names.append(f"{col}_{counts[col]}")
+        else:
+            # If first occurrence, add name to counts and keep original name
+            counts[col] = 0
+            new_column_names.append(col)
+
+    # Assign the new list to df.columns
+    mydf.columns = new_column_names
+
+    return mydf
         
 if __name__ == "__main__":
     """
