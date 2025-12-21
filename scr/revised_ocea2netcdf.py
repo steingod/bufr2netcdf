@@ -13,7 +13,7 @@ import subprocess
 import numpy as np 
 import pandas as pd
 from funcs.useful_functions import cf_match
-from funcs.code_tables import table_002032, table_002033
+#from funcs.code_tables import table_002032, table_002033
 from funcs.get_keywords import *
 import re
 from dateutil.relativedelta import relativedelta
@@ -89,12 +89,10 @@ def get_all_keys(bufr):
         keys.append(key_name)
         if key_name == "subsetNumber":
             subset += 1
-            #print(' Subset: %d' % subset)
-        #else:
-            #print(' %s' % key_name)
+            
 
     codes_bufr_keys_iterator_delete(iter_id)
-    #print('Extracted keys:', keys)
+    
     return keys
 
 
